@@ -1,0 +1,18 @@
+# base on latest python file
+FROM python:3.13
+
+# set working directory
+WORKDIR /app
+
+# copy files
+COPY worker.py requirements.txt HZZAnalysis_Funcs.py ./
+
+RUN python -m pip install aiohttp
+
+# install dependent libraries
+RUN pip install -r requirements.txt
+
+COPY . .
+
+# the command to run our program
+CMD [ "python", "-u", "./worker.py"]

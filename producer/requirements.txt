@@ -1,0 +1,12 @@
+numpy
+matplotlib
+uproot
+awkward
+vector
+docker
+pika
+atlasopenmagic
+requests
+hist
+pyarrow
+pandas

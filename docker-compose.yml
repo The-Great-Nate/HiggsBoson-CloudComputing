@@ -1,0 +1,54 @@
+volumes:
+  HZZ-outputs:
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    networks:
+      - rabbit
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  producer:
+    image: hzz-producer:latest
+    networks:
+      - rabbit
+    volumes:
+      - HZZ-outputs:/data
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  worker:
+    image: hzz-worker:latest
+    networks:
+      - rabbit
+    volumes:
+      - HZZ-outputs:/data
+    environment:
+      - WORKER_ID={{.Task.Slot}}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  aggregator:
+    image: hzz-aggregator:latest
+    networks:
+      - rabbit
+    volumes:
+      - HZZ-outputs:/data
+    deploy:
+      restart_policy:
+        condition: on-failure 
+
+networks:
+  rabbit:
+    driver: overlay
+    attachable: true
