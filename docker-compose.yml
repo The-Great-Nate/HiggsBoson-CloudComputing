@@ -31,8 +31,6 @@ services:
       - rabbit
     volumes:
       - HZZ-outputs:/data
-    environment:
-      - WORKER_ID={{.Task.Slot}}
     deploy:
       replicas: 2
       restart_policy:
