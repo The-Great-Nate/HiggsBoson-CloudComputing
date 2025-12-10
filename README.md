@@ -17,9 +17,9 @@ Crucial steps in the data analysis were broken down into various containers with
 6. Deploy the docker stack with `docker stack deploy -c docker-compose.yml <STACK NAME>`
 
 ### Extra Notes
-- You can delete the stack with `docker stack rm <STACK NAME` if you want to change any python (`.py`) file in the image directories.
+- You can delete the stack with `docker stack rm <STACK NAME>` if you want to change any python (`.py`) file in the image directories.
   - Please note: you must rerun `./docker_stack_build` if any changes are made to any python (`.py`) file.
 - You can access the output plot in the created volume (`<STACK NAME>_HZZ-outputs`) with the docker desktop GUI. Terminal access into the volume is also possible. The plot is placed in `/data/figures/` in the created volume
-
+- Increase the number of workers through editing the `worker` service within the `docker-compose.yml` file by changing the number of `replicas: ` under the `deploy` section
 
 <img width="1876" height="1294" alt="Screenshot From 2025-12-05 17-42-04" src="https://github.com/user-attachments/assets/8129d7fe-a025-4feb-b748-8ae36eae7615" />
