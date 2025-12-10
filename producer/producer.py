@@ -3,16 +3,32 @@ import pika
 import time
 from atlasopenmagic import install_from_environment
 install_from_environment()
-
 import atlasopenmagic as atom
 
-def get_file_amount(samples):
+
+def get_file_amount(samples) -> int:
+    '''
+    Arguments:
+        samples (atom.build_dataset()) = Presumably a list of samples
+    Description:
+        Function that extracts the number of files needed to rediscover the Higgs boson
+    Returns:
+        total_files (int) = total number of datasets
+    '''
     total_files = 0
     for s in samples:
         total_files += len(samples[s]['list'])
     return total_files
 
 def main():
+    '''
+    Description:
+        Configures the setup needed to rediscover the Higgs boson.
+        This then leads to the total_file count being sent to the aggregator
+        and the urls of the datasets being sent to workers for them to process.
+    '''
+    
+    ######## Extracting datasets ########
     atom.available_releases()
     atom.set_release('2025e-13tev-beta')
     
@@ -30,6 +46,7 @@ def main():
 }
     samples = atom.build_dataset(defs, skim=skim, protocol='https', cache=True)
 
+    ######## Declaring rabbitmq queues ########
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='rabbitmq')
     )
@@ -37,6 +54,7 @@ def main():
     channel.queue_declare(queue='tasks v3', durable = True)
     channel.queue_declare(queue='aggregate v3', durable = True)
 
+    ######## sending total file count to aggregator ########
     done_msg = {"file_count": str(get_file_amount(samples))}
     print("PRODUCER: Sending total file count:", done_msg["file_count"])
     channel.basic_publish(
@@ -45,6 +63,7 @@ def main():
         body=json.dumps(done_msg)
     )
     
+    ######## sending additional metadata to aggregator ########
     meta = {name: {"color": defs[name].get("color", "#000000")} for name in defs.keys()}
     print("PRODUCER: Senting sample metadata to aggregator")
     channel.basic_publish(
@@ -53,6 +72,7 @@ def main():
         body=json.dumps({"metadata": meta})
     )
 
+    ######## Sending urls of datasets to worker queue ########
     start_time = time.time()
     for s in samples:
         for val in samples[s]['list']:
@@ -69,10 +89,11 @@ def main():
         
     elapsed_time = time.time() - start_time
     
+    ######## Write task send time benchmark to file ########
     with open("/data/producer_perf.json", "w") as f:
         json.dump({"task_alloc_time": elapsed_time}, f)
 
-    connection.close()
+    connection.close() # Close rabbitmq connection
 
 if __name__ == "__main__":
     main()

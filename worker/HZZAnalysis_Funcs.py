@@ -3,6 +3,11 @@ import awkward as ak
 import vector
 import uproot
 
+'''
+This code was ripped from the original notebook and the involved analysis
+is broadly unchanged. For more information, consult the original notebook!
+'''
+
 # =======================================================================
 def calc_weight(weight_variables, events):
     lumi = 36.6

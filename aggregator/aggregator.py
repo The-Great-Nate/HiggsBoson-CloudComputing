@@ -7,7 +7,8 @@ import os
 import pika
 import time
 
-
+######## This loop was needed for this code to work ########
+########        Waits for rabbitmq to be ready      ########
 while True:
     try:
         connection = pika.BlockingConnection(
@@ -17,29 +18,45 @@ while True:
     except Exception as e:
         print("RabbitMQ not ready, retrying in 2s...", e)
         time.sleep(2)
-        
+
+######## Declaring rabbitmq queues ########
 channel = connection.channel()
 channel.queue_declare(queue='aggregate v3', durable=True)
+
+######## Declaring gl*bal variables (don't curse me whoever is reading this plz) ########
 expected = None
 processed = 0
 samples = {}
 
 def block_plotting(channel, method, properties, body):
-    global expected, processed, samples # Yeah global variables are bad practice but these two variables are only needed here
+    '''
+    Arguments:
+        channel (pika.BlockingConnection.channel) = a rabbitmq object
+        method = needed
+        properties = utilised in template. will keep for safety
+        body = Recieved message
+    Description:
+        This function prevents the plotting code from running till all the files are processed
+    '''
+    global expected, processed, samples # Yeah global variables are bad practice but these three variables are only needed here
     msg = json.loads(body)
 
+    # check for total file count to wait for
     if msg.get('file_count'):
         expected = int(msg['file_count'])
         print(f"Aggregator: updated expected file count to {expected}")
         
+    # extract dataset metadata
     if msg.get('metadata'):
         samples = msg['metadata']
         print(f"Aggregator: received sample metadata: {samples}")
 
+    # increment amount of files processed by worker
     if msg.get("file_done"):
         processed += 1
         print(f"Processed {processed}/{expected}")
 
+        # Check if all conditions are satisfied to start plotting
         if expected is not None and processed == expected:
             print("All files processed! Proceeding to plotting...")
             channel.stop_consuming()
@@ -47,17 +64,18 @@ def block_plotting(channel, method, properties, body):
     channel.basic_ack(method.delivery_tag)
         
 
-channel.basic_consume(queue='aggregate v3', on_message_callback=block_plotting, auto_ack=False)
+channel.basic_consume(queue='aggregate v3', on_message_callback=block_plotting, auto_ack=False) # must not auto ack
 
 print("Waiting for all files to finish processing before plotting...")
 channel.start_consuming()
 connection.close()
 
-
+# Variable values ripped from original notebook
 GeV = 1.0
 lumi = 36.6
 fraction = 1.0
 
+# Establish file directories
 data_dir = "/data/"
 figures_dir = "/data/figures"
 os.makedirs(figures_dir, exist_ok=True)
@@ -74,6 +92,7 @@ bin_centres = np.arange(start=xmin+step_size/2, # The interval includes this val
                         stop=xmax+step_size/2, # The interval doesn't include this value
                         step=step_size ) # Spacing between values
     
+######## Reading datas from /data/ volume directory ########
 all_samples_from_workers = {}
 
 for frame_file in os.listdir(data_dir):
@@ -92,13 +111,21 @@ for frame_file in os.listdir(data_dir):
 
 all_data = {}
 
+######## "Some required process for the plotting code to work" ########
+######## I'm not too scared to modify the plotting code... nvm ########
 for sample_name, frame_list in all_samples_from_workers.items():
     print(f"Concatenating {sample_name}: {len(frame_list)} chunks")
     all_data[sample_name] = ak.concatenate(frame_list)
-#print(f"Total events after concatenation: {len(all_data)}")
 
+######## Checking if all data is there ########
 print(f"keys from all_data: {all_data.keys()}")
 print(f"all data Data {all_data['Data']}")
+
+'''
+Below is unchanged from the original notebook. 
+Whatever processes or comments from the original are untampered.
+'''
+
 data_x,_ = np.histogram(ak.to_numpy(all_data['Data']['mass']),
                         bins=bin_edges ) # histogram the data
 data_x_errors = np.sqrt( data_x ) # statistical error on the data
